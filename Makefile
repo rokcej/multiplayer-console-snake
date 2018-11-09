@@ -24,29 +24,27 @@ CLIENT_SRCS:=$(patsubst %,$(SRC_DIR)/%,$(CLIENT_SRCS))
 SERVER_OBJS:=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SERVER_SRCS))
 CLIENT_OBJS:=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(CLIENT_SRCS))
 
-# Default
+# Targets
+## Default
 .PHONY: all
 all: $(BUILD_DIR) $(SERVER_EXEC) $(CLIENT_EXEC)
 
-# Create build directory
+## Create build directory
 $(BUILD_DIR):
 	@mkdir -p $@
 
-# Link
+## Link
 $(SERVER_EXEC): $(SERVER_OBJS)
 $(CLIENT_EXEC): $(CLIENT_OBJS)
 
 $(SERVER_EXEC) $(CLIENT_EXEC):
-	@echo "Linking..."
 	@$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
-# Compile
+## Compile
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	@echo "Compiling $^"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean build directory
+## Clean build directory
 .PHONY: clean
 clean:
-	@echo "Cleaning..."
 	@rm -f $(SERVER_EXEC) $(CLIENT_EXEC) $(SERVER_OBJS) $(CLIENT_OBJS)
