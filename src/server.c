@@ -1,97 +1,75 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include "server.h"
 
 int main(int argc, char *argv[]) {
-    int serv_sock, serv_port;
-    struct sockaddr_in serv_addr;
-
     // Parameters
-    if (argc < 2) {
-        printf("Parameter(s): <Server Port>\n");
-        exit(0);
-    }
-    serv_port = atoi(argv[1]);
+    int port = DEFAULT_PORT;
+    int n_clients = DEFAULT_CLIENTS;
+
+    // Start server
+    int server_sockfd = start_server(port);
+
+    // Connect to clients
+    Client clients[n_clients];
+    connect_clients(server_sockfd, clients, n_clients);
+
+    return 0;
+}
+
+int start_server(int port) {
+    int server_sockfd;
+    struct sockaddr_in server_addr;
 
     // Create socket
-    if ((serv_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((server_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("Error creating socket");
         exit(1);
     }
 
     // Socket address
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(serv_port);
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    // Bind socket to address
-    if (bind(serv_sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
+    // Bind socket to address and listen
+    if (bind(server_sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
         perror("Error binding socket");
         exit(1);
     }
-
-    // Listen on socket for connections
-    if (listen(serv_sock, 5) < 0) {
+    if (listen(server_sockfd, 5) < 0) {
         perror("Error listening on socket");
         exit(1);
     }
 
-    // Main loop
-    while (1) {
-        int cli_sock, cli_addr_len;
-        struct sockaddr_in cli_addr;
+    // Print status
+    printf("Server listening on port %d\n\n", ntohs(server_addr.sin_port));
 
-        // Wait for a client to connect
-        cli_addr_len = sizeof(cli_addr);
-        if ((cli_sock = accept(serv_sock, (struct sockaddr*) &cli_addr, &cli_addr_len)) < 0) {
+    return server_sockfd;
+}
+
+void connect_clients(int server_sockfd, Client *clients, int n_clients) {
+    printf("Waiting for %d clients...\n", n_clients);
+
+    for (int i = 0; i < n_clients; ++i) {
+        int client_sockfd;
+        struct sockaddr_in client_addr;
+
+        // Accept connection
+        int client_addr_len = sizeof(client_addr);
+        if ((client_sockfd = accept(server_sockfd, (struct sockaddr*) &client_addr, (socklen_t*) &client_addr_len)) < 0) {
             perror("Error accepting connection");
             exit(1);
         }
 
-        // Fork process
-        int pid = fork();
-        if (pid < 0) {
-            perror("Error forking process");
+        // Update client struct
+        clients[i].sockfd = client_sockfd;
+        if (inet_ntop(AF_INET, &client_addr.sin_addr, clients[i].ip, INET_ADDRSTRLEN) == NULL) {
+            perror("Error converting client address to string");
             exit(1);
         }
-        
-        if (pid == 0) {
-            // Child
 
-            // Close duplicated socket
-            close(serv_sock);
-
-            // Read from client socket
-            char buffer[256];
-            int n_bytes = read(cli_sock, buffer, 255);
-            if (n_bytes < 0) {
-                perror("Error reading from client socket");
-                exit(1);
-            }
-            buffer[n_bytes] = '\0';
-            printf("Client (%d bytes): %s\n", n_bytes, buffer);
-
-            // Write to client socket
-            n_bytes = write(cli_sock, "Message received", 16);
-            if (n_bytes < 0) {
-                perror("Error writing to client socket");
-                exit(1);
-            }
-
-            // End process
-            exit(0);
-        } else {
-            // Parent
-
-            // Close connection
-            close(cli_sock);
-        }
+        printf("Client #%d connected from %s\n", i, clients[i].ip);
     }
 
-    return 0;
+    printf("\n");
 }

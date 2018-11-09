@@ -1,6 +1,6 @@
 # Flags
 CC=gcc
-CFLAGS=
+CFLAGS=-Wall
 LDFLAGS=
 LDLIBS=-lpthread
 
