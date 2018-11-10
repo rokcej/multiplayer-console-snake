@@ -163,7 +163,6 @@ void start_game(Client *clients, int n_clients) {
 
 	printf("Game finished\n\n");
 }
-
 void spawn_players(Game *game) {
 	int sn = (int) ceil(sqrt((double) game->n_clients));
 	int sw = game->width / sn;
@@ -181,7 +180,6 @@ void spawn_players(Game *game) {
 		client.snake->element.y = (i / sn + 0.5) * sh;
 	}
 }
-
 void spawn_fruit(Game *game) {
 	int total_squares = game->width * game->height;
 	int taken_squares = 0;
@@ -216,7 +214,6 @@ void spawn_fruit(Game *game) {
 	game->fruit.x = -1;
 	game->fruit.y = -1;
 }
-
 void move_snakes(Game *game) {
 	for (int i = 0; i < game->n_clients; ++i) {
 		if (game->clients[i].alive && game->clients[i].dir != NONE) {
@@ -256,7 +253,6 @@ void move_snakes(Game *game) {
 		}
 	}
 }
-
 void check_snake_collisions(Game *game) {
 	for (int i = 0; i < game->n_clients; ++i) {
 		if (game->clients[i].alive) {
@@ -274,7 +270,6 @@ void check_snake_collisions(Game *game) {
 		}
 	}
 }
-
 void check_fruit_collisions(Game *game) {
 	for (int i = 0; i < game->n_clients; ++i) {
 		if (game->clients[i].alive) {
@@ -298,7 +293,6 @@ void check_fruit_collisions(Game *game) {
 		}
 	}
 }
-
 int collides_with(Object object, ObjectList *list) {
 	ObjectList *node = list;
 	while (node != NULL) {
@@ -308,7 +302,6 @@ int collides_with(Object object, ObjectList *list) {
 	}
 	return 0;
 }
-
 void *input_handler(void *void_ptr) {
 	ThreadData *data = (ThreadData*) void_ptr;
 	int id = data->id;

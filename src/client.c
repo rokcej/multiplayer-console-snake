@@ -1,13 +1,40 @@
 #include "client.h"
 
 int main(int argc, char *argv[]) {
-	// Parameters
+	// Connect to server
 	char ip[INET_ADDRSTRLEN];
 	strncpy(ip, DEFAULT_IP, INET_ADDRSTRLEN);
 	int port = DEFAULT_PORT;
-	
-	// Connect to server
 	int server_sockfd = connect_to_server(ip, port);
+
+	// Start game
+	while (1) {
+		// Get game info from server
+		int running = recv_int(server_sockfd);
+		if (!running)
+			break;
+		
+		int width = recv_int(server_sockfd);
+		int height = recv_int(server_sockfd);
+		char board[height][width];
+		recv_bytes(server_sockfd, &board[0][0], width * height);
+
+		// Display board
+		system("clear");
+		for (int i = 0; i < width + 2; ++i)
+			printf("#");
+		printf("\n");
+		for (int y = 0; y < height; ++y) {
+			printf("#");
+			for (int x = 0; x < width; ++x) {
+				printf("%c", board[y][x]);
+			}
+			printf("#\n");
+		}
+		for (int i = 0; i < width + 2; ++i)
+			printf("#");
+		printf("\n");
+	}
 
 	return 0;
 }
