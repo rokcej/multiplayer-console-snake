@@ -2,7 +2,7 @@
 CC=gcc
 CFLAGS=-Wall
 LDFLAGS=
-LDLIBS=-lpthread
+LDLIBS=-pthread -lm
 
 # Parameters
 SRC_DIR=src
@@ -11,8 +11,8 @@ BUILD_DIR=build
 SERVER_EXEC=server
 CLIENT_EXEC=client
 
-SERVER_SRCS=server.c
-CLIENT_SRCS=client.c
+SERVER_SRCS=server.c socket_comm.c
+CLIENT_SRCS=client.c socket_comm.c
 
 # Files
 SERVER_EXEC:=$(BUILD_DIR)/$(SERVER_EXEC)

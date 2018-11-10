@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "socket_comm.h"
 
 static const char DEFAULT_IP[INET_ADDRSTRLEN] = "127.0.0.1";
 static const int DEFAULT_PORT = 3000;
