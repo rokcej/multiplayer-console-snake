@@ -16,9 +16,9 @@
 #include "snake.h"
 
 static const int DEFAULT_PORT = 3000;
-static const int DEFAULT_CLIENTS = 1;
+static const int DEFAULT_CLIENTS = 3;
 
-static const int DEFAULT_WIDTH = 32;
+static const int DEFAULT_WIDTH = 48;
 static const int DEFAULT_HEIGHT = 16;
 
 typedef struct _Object {

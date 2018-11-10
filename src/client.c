@@ -7,34 +7,9 @@ int main(int argc, char *argv[]) {
 	int port = DEFAULT_PORT;
 	int server_sockfd = connect_to_server(ip, port);
 
-	// Start game
-	while (1) {
-		// Get game info from server
-		int running = recv_int(server_sockfd);
-		if (!running)
-			break;
-		
-		int width = recv_int(server_sockfd);
-		int height = recv_int(server_sockfd);
-		char board[height][width];
-		recv_bytes(server_sockfd, &board[0][0], width * height);
-
-		// Display board
-		system("clear");
-		for (int i = 0; i < width + 2; ++i)
-			printf("#");
-		printf("\n");
-		for (int y = 0; y < height; ++y) {
-			printf("#");
-			for (int x = 0; x < width; ++x) {
-				printf("%c", board[y][x]);
-			}
-			printf("#\n");
-		}
-		for (int i = 0; i < width + 2; ++i)
-			printf("#");
-		printf("\n");
-	}
+	// Snake
+	start_game(server_sockfd);
+	show_score(server_sockfd);
 
 	return 0;
 }
@@ -83,4 +58,80 @@ int connect_to_server(char *ip, int port) {
 	printf("\n");
 
 	return server_sockfd;
+}
+
+void start_game(int server_sockfd) {
+	// Get game status
+	int running = recv_int(server_sockfd);
+
+	// Create thread for each client
+	pthread_t thread;
+	ThreadData data = { .server_sockfd = server_sockfd, .running = &running };
+	if (pthread_create(&thread, NULL, input_handler, &data)) {
+		fprintf(stderr, "Error creating thread\n");
+		exit(1);
+	}
+	
+	while (running) {
+		// Get game info
+		int width = recv_int(server_sockfd);
+		int height = recv_int(server_sockfd);
+		char board[height][width];
+		recv_bytes(server_sockfd, &board[0][0], width * height);
+
+		// Display board
+		system("clear");
+		for (int i = 0; i < width + 2; ++i)
+			printf("#");
+		printf("\n");
+		for (int y = 0; y < height; ++y) {
+			printf("#");
+			for (int x = 0; x < width; ++x) {
+				printf("%c", board[y][x]);
+			}
+			printf("#\n");
+		}
+		for (int i = 0; i < width + 2; ++i)
+			printf("#");
+		printf("\n");
+
+		// Get game status
+		running = recv_int(server_sockfd);
+	}
+
+	// Join threads
+	pthread_join(thread, NULL);
+}
+void *input_handler(void *void_ptr) {
+	ThreadData *data = (ThreadData*) void_ptr;
+	int server_sockfd = data->server_sockfd;
+	int *running = data->running;
+	while (*running) {
+		int key = getchar();
+		switch (key) {
+			case 'w':
+			send_int(server_sockfd, UP);
+			break;
+
+			case 'd':
+			send_int(server_sockfd, RIGHT);
+			break;
+
+			case 's':
+			send_int(server_sockfd, DOWN);
+			break;
+
+			case 'a':
+			send_int(server_sockfd, LEFT);
+			break;
+
+			default:
+			break;
+		}
+	} 
+	return NULL;
+}
+
+void show_score(int server_sockfd) {
+	return;
 }

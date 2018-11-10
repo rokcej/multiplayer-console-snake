@@ -98,6 +98,10 @@ void start_game(Client *clients, int n_clients) {
 	spawn_players(&game);
 	spawn_fruit(&game);
 
+	// Send game status
+	for (int i = 0; i < game.n_clients; ++i)
+		send_int(game.clients[i].sockfd, game.running);
+
 	// Create thread for each client
 	pthread_t threads[n_clients];
 	for (int i = 0; i < n_clients; ++i) {
@@ -109,53 +113,50 @@ void start_game(Client *clients, int n_clients) {
 	}
 	
 	// Main loop
-	while (1) {
+	while (game.running) {
 		// Start tick timer
 		time_t start_tick = time(NULL);
 
-		// Communicate with client
-		/// Is game running
-		for (int i = 0; i < game.n_clients; ++i)
-			send_int(game.clients[i].sockfd, game.running);
-		if (!game.running)
-			break;
-		
-		/// Game board
+		// Simulate
+		/// Move snakes
+		move_snakes(&game);
+		/// Check for snake collisions
+		check_snake_collisions(&game);
+		/// Check for fruit collisions
+		check_fruit_collisions(&game);
+
+		// Draw
+		/// Create game board
 		char board[game.height][game.width];
 		memset(&board[0][0], ' ', game.height * game.width);
 		board[game.fruit.y][game.fruit.x] = 'X';
 		for (int i = 0; i < game.n_clients; ++i) {
 			if (game.clients[i].alive) {
-				// Head
-				ObjectList *node = game.clients[i].snake;
-				board[node->element.y][node->element.x] = 'O';
 				// Tail
-				node = node->next;
-				while (node != NULL) {
-					board[node->element.y][node->element.x] = 'o';
-					node = node->next;
+				ObjectList *tail = game.clients[i].snake->next;
+				while (tail != NULL) {
+					board[tail->element.y][tail->element.x] = 'o';
+					tail = tail->next;
 				}
+				// Head
+				ObjectList *head = game.clients[i].snake;
+				board[head->element.y][head->element.x] = 'O';
 			}
 		}
+		/// Send game board
 		for (int i = 0; i < game.n_clients; ++i) {
 			send_int(game.clients[i].sockfd, game.width);
 			send_int(game.clients[i].sockfd, game.height);
 			send_bytes(game.clients[i].sockfd, &board[0][0], game.width * game.height);
 		}
 
-		// Simulate
-		/// Move snakes
-		move_snakes(&game);
-
-		/// Check for snake collisions
-		check_snake_collisions(&game);
-
-		/// Check for fruit collisions
-		check_fruit_collisions(&game);
-
 		// Wait for tick
 		while (start_tick == time(NULL))
 			sleep(0);
+
+		// Send game status
+		for (int i = 0; i < game.n_clients; ++i)
+			send_int(game.clients[i].sockfd, game.running);
 	}
 
 	// Join threads
