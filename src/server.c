@@ -87,8 +87,8 @@ void connect_clients(int server_sockfd, Client *clients, int n_clients) {
 void start_game(Client *clients, int n_clients) {
 	// Init game
 	Game game;
-	game.width = 50;
-	game.height = 50;
+	game.width = DEFAULT_WIDTH;
+	game.height = DEFAULT_HEIGHT;
 	game.running = 1;
 
 	game.n_clients = n_clients;
@@ -154,7 +154,8 @@ void start_game(Client *clients, int n_clients) {
 		check_fruit_collisions(&game);
 
 		// Wait for tick
-		while (start_tick == time(NULL));
+		while (start_tick == time(NULL))
+			sleep(0);
 	}
 
 	// Join threads
@@ -168,16 +169,16 @@ void spawn_players(Game *game) {
 	int sw = game->width / sn;
 	int sh = game->height / sn;
 	for (int i = 0; i < game->n_clients; ++i) {
-		Client client = game->clients[i];
-		client.length = 1;
-		client.alive = 1;
-		client.dir = NONE;
-		client.snake = malloc(sizeof(ObjectList));
-		client.snake->next = NULL;
-		client.snake->prev = NULL;
+		Client *client = &(game->clients[i]);
+		client->length = 1;
+		client->alive = 1;
+		client->dir = NONE;
+		client->snake = malloc(sizeof(ObjectList));
+		client->snake->next = NULL;
+		client->snake->prev = NULL;
 		// Spawn coordinates
-		client.snake->element.x = (i % sn + 0.5) * sw;
-		client.snake->element.y = (i / sn + 0.5) * sh;
+		client->snake->element.x = (i % sn + 0.5) * sw;
+		client->snake->element.y = (i / sn + 0.5) * sh;
 	}
 }
 void spawn_fruit(Game *game) {
@@ -193,7 +194,8 @@ void spawn_fruit(Game *game) {
 		for (int x = 0; x < game->width; ++x) {
 			int collision = 0;
 			for (int i = 0; i < game->n_clients; ++i) {
-				if (collides_with(game->fruit, game->clients[i].snake)) {
+				Object square = { .x = x, .y = y };
+				if (collides_with(square, game->clients[i].snake)) {
 					collision = 1;
 					break;
 				}
