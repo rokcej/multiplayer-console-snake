@@ -114,10 +114,34 @@ void start_game(Client *clients, int n_clients) {
 		time_t start_tick = time(NULL);
 
 		// Communicate with client
-		for (int i = 0; i < n_clients; ++i)
-			send_int(clients[i].sockfd, game.running);
+		/// Is game running
+		for (int i = 0; i < game.n_clients; ++i)
+			send_int(game.clients[i].sockfd, game.running);
 		if (!game.running)
 			break;
+		
+		/// Game board
+		char board[game.height][game.width];
+		memset(&board[0][0], ' ', game.height * game.width);
+		board[game.fruit.y][game.fruit.x] = 'X';
+		for (int i = 0; i < game.n_clients; ++i) {
+			if (game.clients[i].alive) {
+				// Head
+				ObjectList *node = game.clients[i].snake;
+				board[node->element.y][node->element.x] = 'O';
+				// Tail
+				node = node->next;
+				while (node != NULL) {
+					board[node->element.y][node->element.x] = 'o';
+					node = node->next;
+				}
+			}
+		}
+		for (int i = 0; i < game.n_clients; ++i) {
+			send_int(game.clients[i].sockfd, game.width);
+			send_int(game.clients[i].sockfd, game.height);
+			send_bytes(game.clients[i].sockfd, &board[0][0], game.width * game.height);
+		}
 
 		// Simulate
 		/// Move snakes
@@ -179,7 +203,7 @@ void spawn_fruit(Game *game) {
 			if (!collision) {
 				if (index == 0) {
 					// Place fruit
-					game->fruit,x = x;
+					game->fruit.x = x;
 					game->fruit.y = y;
 					return;
 				} else {
