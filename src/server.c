@@ -87,6 +87,7 @@ void connect_clients(int server_sockfd, Client *clients, int n_clients) {
 void start_game(Client *clients, int n_clients) {
 	// Init game
 	Game game;
+	game.tickrate = DEFAULT_TICKRATE;
 	game.width = DEFAULT_WIDTH;
 	game.height = DEFAULT_HEIGHT;
 	game.running = 1;
@@ -104,9 +105,11 @@ void start_game(Client *clients, int n_clients) {
 
 	// Create thread for each client
 	pthread_t threads[n_clients];
+	ThreadData thread_data[n_clients];
 	for (int i = 0; i < n_clients; ++i) {
-		ThreadData data = { .id = i, .game = &game };
-		if (pthread_create(&threads[i], NULL, input_handler, &data)) {
+		thread_data[i].id = i;
+		thread_data[i].game = &game;
+		if (pthread_create(&threads[i], NULL, input_handler, &thread_data[i])) {
 			fprintf(stderr, "Error creating thread\n");
 			exit(1);
 		}
@@ -115,7 +118,8 @@ void start_game(Client *clients, int n_clients) {
 	// Main loop
 	while (game.running) {
 		// Start tick timer
-		time_t start_tick = time(NULL);
+		struct timeval start_tick, stop_tick;
+		gettimeofday(&start_tick, NULL);
 
 		// Simulate
 		/// Move snakes
@@ -151,17 +155,31 @@ void start_game(Client *clients, int n_clients) {
 		}
 
 		// Wait for tick
-		while (start_tick == time(NULL))
+		gettimeofday(&stop_tick, NULL);
+		while ((stop_tick.tv_sec - start_tick.tv_sec + (stop_tick.tv_usec - start_tick.tv_usec) * 1e-6) < (1.0 / game.tickrate)) {
 			sleep(0);
+			gettimeofday(&stop_tick, NULL);
+		}
 
-		// Send game status
+		// Check and send game status
+		int game_over = 1;
+		for (int i = 0; i < game.n_clients; ++i) {
+			if (game.clients[i].alive) {
+				game_over = 0;
+				break;
+			}
+		}
+		if (game_over)
+			game.running = 0;
 		for (int i = 0; i < game.n_clients; ++i)
 			send_int(game.clients[i].sockfd, game.running);
 	}
 
 	// Join threads
-	for (int i = 0; i < n_clients; ++i)
+	for (int i = 0; i < n_clients; ++i) {
+		pthread_cancel(threads[i]);
 		pthread_join(threads[i], NULL);
+	}
 
 	printf("Game finished\n\n");
 }
@@ -174,6 +192,7 @@ void spawn_players(Game *game) {
 		client->length = 1;
 		client->alive = 1;
 		client->dir = NONE;
+		client->dir_pending = NONE;
 		client->snake = malloc(sizeof(ObjectList));
 		client->snake->next = NULL;
 		client->snake->prev = NULL;
@@ -219,6 +238,10 @@ void spawn_fruit(Game *game) {
 }
 void move_snakes(Game *game) {
 	for (int i = 0; i < game->n_clients; ++i) {
+		// Update direction
+		game->clients[i].dir = game->clients[i].dir_pending;
+
+		// Move snake
 		if (game->clients[i].alive && game->clients[i].dir != NONE) {
 			ObjectList *node = game->clients[i].snake;
 			while (node->next != NULL)
@@ -237,8 +260,8 @@ void move_snakes(Game *game) {
 
 				case RIGHT:
 				node->element.x += 1;
-				if (node->element.y > game->width - 1)
-					node->element.y = 0;
+				if (node->element.x > game->width - 1)
+					node->element.x = 0;
 				break;
 
 				case DOWN:
@@ -257,20 +280,30 @@ void move_snakes(Game *game) {
 	}
 }
 void check_snake_collisions(Game *game) {
+	// Detect collisions
+	int kill_client[game->n_clients];
 	for (int i = 0; i < game->n_clients; ++i) {
+		kill_client[i] = 0;
 		if (game->clients[i].alive) {
 			for (int j = 0; j < game->n_clients; ++j) {
-				Object head = game->clients[i].snake->element;
-				ObjectList *snake = game->clients[j].snake;
-				if (i == j)
-					snake = snake->next;
+				if (game->clients[j].alive) {
+					Object head = game->clients[i].snake->element;
+					ObjectList *snake = game->clients[j].snake;
+					if (i == j)
+						snake = snake->next;
 
-				if (collides_with(head, snake)) {
-					game->clients[i].alive = 0;
-					break;
+					if (collides_with(head, snake)) {
+						kill_client[i] = 1;
+						break;
+					}
 				}
 			}
 		}
+	}
+	// Kill dead snakes
+	for (int i = 0; i < game->n_clients; ++i) {
+		if (kill_client[i])
+			game->clients[i].alive = 0;
 	}
 }
 void check_fruit_collisions(Game *game) {
@@ -279,7 +312,6 @@ void check_fruit_collisions(Game *game) {
 			Object head = game->clients[i].snake->element;
 			Object fruit = game->fruit;
 			if (head.x == fruit.x && head.y == fruit.y) {
-				game->clients[i].length += 1;
 				ObjectList *node = game->clients[i].snake;
 				while (node->next != NULL)
 					node = node->next;
@@ -290,8 +322,10 @@ void check_fruit_collisions(Game *game) {
 				node->next->element.x = node->element.x;
 				node->next->element.y = node->element.y;
 
+				game->clients[i].length += 1;
+
 				spawn_fruit(game);
-				break;
+				return;
 			}
 		}
 	}
@@ -310,9 +344,27 @@ void *input_handler(void *void_ptr) {
 	int id = data->id;
 	Game *game = data->game;
 	while (game->running) {
-		int dir = recv_int(game->clients[id].sockfd);
-		// TODO: allow only certain directions
-		game->clients[id].dir = dir;
+		int new_dir = recv_int(game->clients[id].sockfd);
+		switch (new_dir) {
+			case UP:
+			case DOWN:
+			if (game->clients[id].dir == NONE ||
+				game->clients[id].dir == LEFT ||
+				game->clients[id].dir == RIGHT)
+				game->clients[id].dir_pending = new_dir;
+			break;
+
+			case LEFT:
+			case RIGHT:
+			if (game->clients[id].dir == NONE ||
+				game->clients[id].dir == UP ||
+				game->clients[id].dir == DOWN)
+				game->clients[id].dir_pending = new_dir;
+			break;
+
+			default:
+			break;
+		}
 	} 
 	return NULL;
 }

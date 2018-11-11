@@ -7,6 +7,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -16,8 +17,9 @@
 #include "snake.h"
 
 static const int DEFAULT_PORT = 3000;
-static const int DEFAULT_CLIENTS = 3;
+static const int DEFAULT_CLIENTS = 2;
 
+static const double DEFAULT_TICKRATE = 8;
 static const int DEFAULT_WIDTH = 48;
 static const int DEFAULT_HEIGHT = 16;
 
@@ -39,11 +41,14 @@ typedef struct _Client {
 	int length;
 	int alive;
 	int dir;
+	int dir_pending;
 	ObjectList *snake;
 } Client;
 
 typedef struct _Game {
-	int width, height, running;
+	double tickrate;
+	int width, height;
+	int running;
 
 	int n_clients;
 	Client *clients;

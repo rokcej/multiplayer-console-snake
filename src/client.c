@@ -100,6 +100,7 @@ void start_game(int server_sockfd) {
 	}
 
 	// Join threads
+	pthread_cancel(thread);
 	pthread_join(thread, NULL);
 }
 void *input_handler(void *void_ptr) {
@@ -109,18 +110,22 @@ void *input_handler(void *void_ptr) {
 	while (*running) {
 		int key = getchar();
 		switch (key) {
+			case 'W':
 			case 'w':
 			send_int(server_sockfd, UP);
 			break;
 
+			case 'D':
 			case 'd':
 			send_int(server_sockfd, RIGHT);
 			break;
 
+			case 'S':
 			case 's':
 			send_int(server_sockfd, DOWN);
 			break;
 
+			case 'A':
 			case 'a':
 			send_int(server_sockfd, LEFT);
 			break;
