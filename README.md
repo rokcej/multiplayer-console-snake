@@ -1,5 +1,5 @@
 # Multiplayer Snake
-Multiplayer snake game written in C
+Multiplayer snake game written in C using sockets. It runs in the console to avoid using external libraries.
 
 * Compiling the code:
 	```bash
