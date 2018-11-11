@@ -14,21 +14,13 @@ int main(int argc, char *argv[]) {
 	int port = DEFAULT_PORT;
 	int server_sockfd = start_server(port);
 
-	printf("\n");
-
 	// Connect to clients
 	int n_clients = atoi(argv[1]);
 	Client clients[n_clients];
 	connect_clients(server_sockfd, clients, n_clients);
 
-	printf("\n");
-
-	// Start the game
+	// Game
 	start_game(clients, n_clients);
-
-	printf("\n");
-
-	// Send results to clients
 	send_scores(clients, n_clients);
 
 	// Cleanup
@@ -66,7 +58,7 @@ int start_server(int port) {
 	}
 
 	// Print status
-	printf("Server listening on port %d\n", ntohs(server_addr.sin_port));
+	printf("Server listening on port %d\n\n", ntohs(server_addr.sin_port));
 
 	return server_sockfd;
 }
@@ -103,6 +95,7 @@ void connect_clients(int server_sockfd, Client *clients, int n_clients) {
 		for (int j = 0; j <= i; ++j)
 			send_int(clients[j].sockfd, i+1);
 	}
+	printf("\n");
 }
 
 void start_game(Client *clients, int n_clients) {
@@ -214,7 +207,7 @@ void start_game(Client *clients, int n_clients) {
 		pthread_join(threads[i], NULL);
 	}
 
-	printf("Game finished\n");
+	printf("Game finished\n\n");
 }
 void spawn_players(Game *game) {
 	int sn = (int) ceil(sqrt((double) game->n_clients));

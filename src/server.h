@@ -64,6 +64,7 @@ typedef struct _ThreadData {
 } ThreadData;
 
 int start_server(int port);
+
 void connect_clients(int server_sockfd, Client *clients, int n_clients);
 
 void start_game(Client *clients, int n_clients);
