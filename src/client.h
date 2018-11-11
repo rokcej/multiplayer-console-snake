@@ -11,7 +11,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "socket_comm.h"
-#include "snake.h"
+#include "snake_comm.h"
 
 static const char DEFAULT_IP[INET_ADDRSTRLEN] = "127.0.0.1";
 static const int DEFAULT_PORT = 3000;
@@ -21,11 +21,13 @@ typedef struct _ThreadData {
 	int *running;
 } ThreadData;
 
-int connect_to_server(char *ip, int port);
+int get_name(char *name, int max_name_len);
+
+int connect_to_server(char *ip, int port, char *name);
 
 void start_game(int server_sockfd);
 void *input_handler(void *void_ptr);
 
-void show_score(int server_sockfd);
+void show_scores(int server_sockfd);
 
 #endif

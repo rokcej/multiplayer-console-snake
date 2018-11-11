@@ -5,8 +5,11 @@ Multiplayer snake game written in C
 	```bash
 	make
 	```
-* Running the program:
+* Running the server for `N` players (e.g. `N` = `2`):
 	```bash
-	build/server
-	build/client
+	build/server 2
+	```
+* Running the client for server on the IP address `IP` (e.g. `IP` = `127.0.0.1`):
+    ```bash
+	build/client 127.0.0.1
 	```

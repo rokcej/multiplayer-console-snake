@@ -14,13 +14,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "socket_comm.h"
-#include "snake.h"
+#include "snake_comm.h"
 
 static const int DEFAULT_PORT = 3000;
 static const int DEFAULT_CLIENTS = 2;
 
 static const double DEFAULT_TICKRATE = 8;
-static const int DEFAULT_WIDTH = 48;
+static const int DEFAULT_WIDTH = 32;
 static const int DEFAULT_HEIGHT = 16;
 
 typedef struct _Object {
@@ -37,8 +37,10 @@ typedef struct _ObjectList {
 typedef struct _Client {
 	int sockfd;
 	char ip[INET_ADDRSTRLEN];
+	char name[MAX_NAME_LEN];
 
 	int length;
+	int score;
 	int alive;
 	int dir;
 	int dir_pending;
@@ -73,6 +75,6 @@ void check_fruit_collisions(Game *game);
 int collides_with(Object object, ObjectList *list);
 void *input_handler(void *void_ptr);
 
-void show_score(Client *clients, int n_clients);
+void send_scores(Client *clients, int n_clients);
 
 #endif

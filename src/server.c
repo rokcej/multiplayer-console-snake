@@ -1,6 +1,12 @@
 #include "server.h"
 
 int main(int argc, char *argv[]) {
+	// Arguments
+	if (argc < 2) {
+		fprintf(stderr, "Required argument(s): Number of players\n");
+		exit(1);
+	}
+
 	// Init RNG
 	srand(time(NULL));
 
@@ -8,14 +14,27 @@ int main(int argc, char *argv[]) {
 	int port = DEFAULT_PORT;
 	int server_sockfd = start_server(port);
 
+	printf("\n");
+
 	// Connect to clients
-	int n_clients = DEFAULT_CLIENTS;
+	int n_clients = atoi(argv[1]);
 	Client clients[n_clients];
 	connect_clients(server_sockfd, clients, n_clients);
 
-	// Snake
-	start_game(clients, n_clients);	
-	show_score(clients, n_clients);
+	printf("\n");
+
+	// Start the game
+	start_game(clients, n_clients);
+
+	printf("\n");
+
+	// Send results to clients
+	send_scores(clients, n_clients);
+
+	// Cleanup
+	close(server_sockfd);
+	for (int i = 0; i < n_clients; ++i)
+		close(clients[i].sockfd);
 
 	return 0;
 }
@@ -47,7 +66,7 @@ int start_server(int port) {
 	}
 
 	// Print status
-	printf("Server listening on port %d\n\n", ntohs(server_addr.sin_port));
+	printf("Server listening on port %d\n", ntohs(server_addr.sin_port));
 
 	return server_sockfd;
 }
@@ -73,18 +92,21 @@ void connect_clients(int server_sockfd, Client *clients, int n_clients) {
 			exit(1);
 		}
 
-		printf("Client #%d connected from %s\n", i, clients[i].ip);
+		// Get client name
+		recv_bytes(clients[i].sockfd, clients[i].name, MAX_NAME_LEN - 1);
+		clients[i].name[MAX_NAME_LEN - 1] = '\0';
+
+		printf("Client #%d '%s' connected from %s\n", i, clients[i].name, clients[i].ip);
 
 		// User count
 		send_int(clients[i].sockfd, n_clients);
 		for (int j = 0; j <= i; ++j)
 			send_int(clients[j].sockfd, i+1);
 	}
-
-	printf("\n");
 }
 
 void start_game(Client *clients, int n_clients) {
+	printf("Starting game...\n");
 	// Init game
 	Game game;
 	game.tickrate = DEFAULT_TICKRATE;
@@ -147,11 +169,22 @@ void start_game(Client *clients, int n_clients) {
 				board[head->element.y][head->element.x] = 'O';
 			}
 		}
-		/// Send game board
+		/// Send game information
 		for (int i = 0; i < game.n_clients; ++i) {
+			// Player info
+			send_int(game.clients[i].sockfd, game.clients[i].score);
+			send_int(game.clients[i].sockfd, game.clients[i].alive);
+			// Board info
 			send_int(game.clients[i].sockfd, game.width);
 			send_int(game.clients[i].sockfd, game.height);
+
+			int x = game.clients[i].snake->element.x;
+			int y = game.clients[i].snake->element.y;
+			char temp = board[y][x];
+			if (game.clients[i].alive)
+				board[y][x] = '0';
 			send_bytes(game.clients[i].sockfd, &board[0][0], game.width * game.height);
+			board[y][x] = temp;
 		}
 
 		// Wait for tick
@@ -181,7 +214,7 @@ void start_game(Client *clients, int n_clients) {
 		pthread_join(threads[i], NULL);
 	}
 
-	printf("Game finished\n\n");
+	printf("Game finished\n");
 }
 void spawn_players(Game *game) {
 	int sn = (int) ceil(sqrt((double) game->n_clients));
@@ -190,6 +223,7 @@ void spawn_players(Game *game) {
 	for (int i = 0; i < game->n_clients; ++i) {
 		Client *client = &(game->clients[i]);
 		client->length = 1;
+		client->score = 0;
 		client->alive = 1;
 		client->dir = NONE;
 		client->dir_pending = NONE;
@@ -323,6 +357,7 @@ void check_fruit_collisions(Game *game) {
 				node->next->element.y = node->element.y;
 
 				game->clients[i].length += 1;
+				game->clients[i].score += 1;
 
 				spawn_fruit(game);
 				return;
@@ -369,6 +404,18 @@ void *input_handler(void *void_ptr) {
 	return NULL;
 }
 
-void show_score(Client *clients, int n_clients) {
-	return;
+void send_scores(Client *clients, int n_clients) {
+	char names[n_clients][MAX_NAME_LEN];
+	int scores[n_clients];
+
+	for (int i = 0; i < n_clients; ++i) {
+		strncpy(names[i], clients[i].name, MAX_NAME_LEN);
+		scores[i] = clients[i].score;
+	}
+
+	for (int i = 0; i < n_clients; ++i) {
+		send_int(clients[i].sockfd, n_clients);
+		send_bytes(clients[i].sockfd, &names[0][0], n_clients * MAX_NAME_LEN);
+		send_ints(clients[i].sockfd, scores, n_clients);
+	}
 }

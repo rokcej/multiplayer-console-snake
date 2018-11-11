@@ -52,7 +52,7 @@ void send_bytes(int sockfd, void *buf, int buf_size) {
 		perror("Error writing to socket");
 		exit(1);
 	} else if (n_bytes != buf_size) {
-		fprintf(stderr, "Didn't receive expected number of bytes\n");
+		fprintf(stderr, "Warning, didn't send expected number of bytes\n");
 	}
 }
 
@@ -62,6 +62,6 @@ void recv_bytes(int sockfd, char *buf, int buf_size) {
 		perror("Error writing to socket");
 		exit(1);
 	} else if (n_bytes != buf_size) {
-		fprintf(stderr, "Didn't receive expected number of bytes\n");
+		fprintf(stderr, "Warning, didn't receive expected number of bytes\n");
 	}
 }
